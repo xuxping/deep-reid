@@ -1,6 +1,4 @@
-<p align="center">
-  <img src="imgs/deep-person-reid-logo.png" alt="logo" width="260">
-</p>
+It is forked from [deep-person-reid](https://github.com/KaiyangZhou/deep-person-reid)
 
 ## Introduction
 Deep-person-reid is a [pytorch](http://pytorch.org/)-based framework for training and evaluating deep person re-identification models on reid benchmarks.
