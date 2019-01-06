@@ -24,12 +24,19 @@ class BaseDataManager(object):
         Return trainloader and testloader dictionary
         """
         return self.trainloader, self.testloader_dict
+    
+    def return_galleryloader(self, name):
+        return self.testloader_dict[name]['gallery']
 
     def return_testdataset_by_name(self, name):
         """
         Return query and gallery, each containing a list of (img_path, pid, camid).
         """
         return self.testdataset_dict[name]['query'], self.testdataset_dict[name]['gallery']
+
+    def return_testdataset_gakkery(self, name):
+        return self.testdataset_dict[name]['gallery']
+
 
 
 class ImageDataManager(BaseDataManager):
@@ -110,7 +117,7 @@ class ImageDataManager(BaseDataManager):
 
         print("=> Initializing TEST (target) datasets")
         self.testloader_dict = {name: {'query': None, 'gallery': None} for name in self.target_names}
-        self.testdataset_dict = {name: {'query': None, 'gallery': None} for name in self.target_names}
+        self.testdataset_dict = {name: {'query': None, 'gallery': None,  'datasets': None} for name in self.target_names}
         
         for name in self.target_names:
             dataset = init_imgreid_dataset(
@@ -132,6 +139,7 @@ class ImageDataManager(BaseDataManager):
 
             self.testdataset_dict[name]['query'] = dataset.query
             self.testdataset_dict[name]['gallery'] = dataset.gallery
+            self.testdataset_dict[name]['datasets'] = dataset
 
         print("\n")
         print("  **************** Summary ****************")
@@ -143,6 +151,7 @@ class ImageDataManager(BaseDataManager):
         print("  test names       : {}".format(self.target_names))
         print("  *****************************************")
         print("\n")
+        
 
 
 class VideoDataManager(BaseDataManager):
