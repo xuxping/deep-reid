@@ -1,7 +1,10 @@
 Cython
 h5py
 numpy
+matplotlib
+pandas
 Pillow
+opencv-python
 scipy>=1.0.0
-torch>=0.4.1
+torch==0.4.1
 torchvision>=0.2.1
