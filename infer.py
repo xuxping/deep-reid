@@ -49,57 +49,23 @@ class Bunch(dict):
 # parser = argument_parser()
 # args = parser.parse_args()
 args = Bunch(**{
-    "adam_beta1" : 0.9,
-    "adam_beta2" : 0.999,
-    "always_fixbase" : False,
     "arch" : "resnet50",
+    "height" : 128,
+    "width" : 64,
+    "load_weights" : "log/market1501-xent-htri/checkpoint_ep60.pth.tar",
+    "save_dir" : "log/",
+    "seed" : 1,
+    "source_names" : ["market1501"],
+    "target_names" : ["market1501"],
+    "test_batch_size" : 128,
+    "train_batch_size" : 128,
+    "root" : "data",
+    "split_id" : 0,
+    "workers" : 4,
+    "train_sampler" : "",
+    "num_instances" : 4,
     "cuhk03_classic_split" : False,
     "cuhk03_labeled" : False,
-    "eval_freq" : -1,
-    "evaluate" : True,
-    "fixbase_epoch" : 0,
-    "gamma" : 0.1,
-    "gpu_devices" : "0",
-    "height" : 128,
-    "htri_only" : False,
-    "label_smooth" : False,
-    "lambda_htri" : 1,
-    "lambda_xent" : 1,
-    "load_weights" : "log/resnet50-market1501-xent/checkpoint_ep40.pth.tar",
-    "lr" : 0.0003,
-    "margin" : 0.3,
-    "max_epoch" : 60,
-    "momentum" : 0.9,
-    "num_instances" : 4,
-    "open_layers" : ["classifier"],
-    "optim" : "adam",
-    "pool_tracklet_features" : "avg",
-    "print_freq" : 10,
-    "resume" : "",
-    "rmsprop_alpha" : 0.99,
-    "root" : "data",
-    "sample_method" : "evenly",
-    "save_dir" : "log/eval-resnet50-market1501-xent",
-    "seed" : 1,
-    "seq_len" : 15,
-    "sgd_dampening" : 0,
-    "sgd_nesterov" : False,
-    "source_names" : ["market1501"],
-    "split_id" : 0,
-    "start_epoch" : 0,
-    "start_eval" : 0,
-    "stepsize" : [20, 40],
-    "target_names" : ["market1501"],
-    "test_batch_size" : 100,
-    "train_batch_size" : 32,
-    "train_sampler" : "",
-    "use_avai_gpus" : False,
-    "use_cpu" : False,
-    "use_metric_cuhk03" : False,
-    "visualize_ranks" : True,
-    "weight_decay" : 0.0005,
-    "width" : 64,
-    "workers" : 4
 })
 
 class MyImageDataset(Dataset):
@@ -120,10 +86,19 @@ class MyImageDataset(Dataset):
         
         return img, img_path
 
+
+torch.manual_seed(args.seed)
+use_gpu = torch.cuda.is_available()
+print(use_gpu)
+if use_gpu:
+    os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+    print("Currently using GPU {}".format(1))
+    cudnn.benchmark = True
+    torch.cuda.manual_seed_all(args.seed)
+
 class Classify():
     def __init__(self):
         global args
-        use_gpu = False
         print("==========\nArgs:{}\n==========".format(args))
 
         print("Initializing image data manager")
@@ -131,7 +106,7 @@ class Classify():
         # ------------
         self.galleryloader = self.dm.return_galleryloader(args.target_names[0])
         print("Initializing model: {}".format(args.arch))
-        self.model = models.init_model(name=args.arch, num_classes=self.dm.num_train_pids, loss={'xent'}, use_gpu=use_gpu)
+        self.model = models.init_model(name=args.arch, num_classes=self.dm.num_train_pids, loss={'xent', 'htri'})
         print("Model size: {:.3f} M".format(count_num_param(self.model)))
 
         if args.load_weights and check_isfile(args.load_weights):
@@ -143,47 +118,50 @@ class Classify():
             model_dict.update(pretrain_dict)
             self.model.load_state_dict(model_dict)
             print("Loaded pretrained weights from '{}'".format(args.load_weights))
-
+        if use_gpu:
+            self.model = nn.DataParallel(self.model).cuda()
         self.gf, self.g_pids, self.g_camids = self.init_gallary_info()
 
-       
     
-    def init_gallary_info(self, use_gpu=False):
+    def init_gallary_info(self):
         batch_time = AverageMeter()
         # init gallary info 
-        gf, g_pids, g_camids = [], [], []
-        pkl_path = './data/market1501/market1501.pkl'
-        if not check_isfile(pkl_path):
-            end = time.time()
-            for batch_idx, (imgs, pids, camids, _) in enumerate(self.galleryloader):
+        self.model.eval()
+        with torch.no_grad():
+            gf, g_pids, g_camids = [], [], []
+            pkl_path = './data/market1501/market1501.pkl'
+            if not check_isfile(pkl_path):
                 end = time.time()
-                features = self.model(imgs)
-                batch_time.update(time.time() - end)
+                for batch_idx, (imgs, pids, camids, _) in enumerate(self.galleryloader):
+                    if use_gpu: 
+                        imgs = imgs.cuda()
+                    end = time.time()
+                    features = self.model(imgs)
+                    batch_time.update(time.time() - end)
 
-                features = features.data.cpu()
-                gf.append(features)
-                g_pids.extend(pids)
-                g_camids.extend(camids)
-            
-            gf = torch.cat(gf, 0)
-            g_pids = np.asarray(g_pids)
-            g_camids = np.asarray(g_camids)
-            print("Extracted features for gallery set, obtained {}-by-{} matrix".format(gf.size(0), gf.size(1)))
-            with open(pkl_path, mode='wb') as fout:
-                pickle.dump(gf, fout)
-                pickle.dump(g_pids, fout)
-                pickle.dump(g_camids, fout)
-        else:
-            with open(pkl_path, mode='rb') as fin:
-                gf = pickle.load(fin)
-                g_pids = pickle.load(fin)
-                g_camids = pickle.load(fin)
+                    features = features.data.cpu()
+                    gf.append(features)
+                    g_pids.extend(pids)
+                    g_camids.extend(camids)
+                
+                gf = torch.cat(gf, 0)
+                g_pids = np.asarray(g_pids)
+                g_camids = np.asarray(g_camids)
+                # cache for CPU
+                with open(pkl_path, mode='wb') as fout:
+                    pickle.dump(gf, fout)
+                    pickle.dump(g_pids, fout)
+                    pickle.dump(g_camids, fout)
+            else:
+                with open(pkl_path, mode='rb') as fin:
+                    gf = pickle.load(fin)
+                    g_pids = pickle.load(fin)
+                    g_camids = pickle.load(fin)
 
         print("Extracted features for gallery set, obtained {}-by-{} matrix".format(gf.size(0), gf.size(1)))
         return gf, g_pids, g_camids
     
     def create_quereyloader(self, img_paths):
-        print(img_paths)
         dataset = []
         for img_path in img_paths:
             dataset.append((img_path))
@@ -192,25 +170,32 @@ class Classify():
         return DataLoader(
                 MyImageDataset(dataset, transform=transform_test),
                 batch_size=args.test_batch_size, shuffle=False, num_workers=args.workers,
-                pin_memory=args.use_cpu, drop_last=False
+                pin_memory=False, drop_last=False
         )
 
     def infer(self, img_paths=None):
-        print("Evaluate only")
-        img_paths = ['./data/market1501/query/0026_c.jpg']
-        queryloader = self.create_quereyloader(img_paths)
+        '''Infer 
 
+        Args:
+            img_paths(list): Image path.
+        Returns:
+            List of result path.
+        '''
+
+        queryloader = self.create_quereyloader(img_paths)
+        save_dirs = []
         for name in args.target_names:
-            print("Evaluating {} ...".format(name))
             distmat = self.test(queryloader, return_distmat=True)
-        
+            save_dir = osp.join(args.save_dir, 'ranked_results', name)
             save_ranked_results(
                 distmat, {'query':img_paths,'gallery':self.dm.return_testdataset_gakkery(name)},
-                save_dir=osp.join(args.save_dir, 'ranked_results', name),
+                save_dir=save_dir,
                 topk=20
             )
+            save_dirs.append(save_dir)
+        return save_dirs
 
-    def test(self, queryloader, ranks=[1, 5, 10, 20], use_gpu=False, return_distmat=False):
+    def test(self, queryloader, ranks=[1, 5, 10, 20], return_distmat=False):
         batch_time = AverageMeter()
         
         self.model.eval()
@@ -227,9 +212,6 @@ class Classify():
                 features = features.data.cpu()
                 qf.append(features)
             qf = torch.cat(qf, 0)
-            print("Extracted features for query set, obtained {}-by-{} matrix".format(qf.size(0), qf.size(1)))
-
-        print("=> BatchTime(s)/BatchSize(img): {:.3f}/{}".format(batch_time.avg, args.test_batch_size))
 
         m, n = qf.size(0), self.gf.size(0)
         distmat = torch.pow(qf, 2).sum(dim=1, keepdim=True).expand(m, n) + \
@@ -239,21 +221,11 @@ class Classify():
 
         return distmat
         
-
-
 def main():
     classify = Classify()
-    classify.infer()
+    img_paths = ['./data/market1501/images/0026_c.jpg']
+    print(classify.infer(img_paths))
 
-def test():
-    def r():
-        for y in range(10):
-            for x in range(10):
-                yield x
-    
-    # for b, x in enumerate(r()):
-    #     print(x)
 
 if __name__ == '__main__':
     main()
-    # print(args.use_cpu)
