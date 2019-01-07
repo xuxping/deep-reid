@@ -103,3 +103,4 @@ yolov3.weights
 det/
 images/
 imgs/
+imgs_dist/
