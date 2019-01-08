@@ -1,4 +1,5 @@
 
+from __future__ import absolute_import
 from __future__ import division
 
 import torch 
@@ -10,7 +11,7 @@ import cv2
 import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
-from bbox import bbox_iou
+from .bbox import bbox_iou
 
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters())

@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 from __future__ import division
 
 import torch 
@@ -7,9 +8,9 @@ from torch.autograd import Variable
 import numpy as np
 import cv2 
 import matplotlib.pyplot as plt
-from util import count_parameters as count
-from util import convert2cpu as cpu
-from util import predict_transform
+from .util import count_parameters as count
+from .util import convert2cpu as cpu
+from .util import predict_transform
 
 class test_net(nn.Module):
     def __init__(self, num_layers, input_size):
