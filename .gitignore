@@ -1,5 +1,6 @@
 # Custom
 data/
+!person_detect/data
 log/
 saved-models/
 debug.py
