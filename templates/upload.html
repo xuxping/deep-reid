@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+
+{% block title %} uploads page{% end %}
+
+{% block content %} content page
+
+<!--如果表单需要上传文件，需要设置enctype="multipart/form-data" 否则文件无法找到 -->
+<form action="/upload" enctype="multipart/form-data" method="post">
+    <input type="file" name="newImg">
+    <input type="submit">
+</form>
+{% end %}

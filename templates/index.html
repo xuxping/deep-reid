@@ -1,0 +1,11 @@
+{% extends 'base.html' %} #继承base.html
+
+{% block title %} index page {% end %}
+
+{% block content %}index content
+{% for num in range(1,5) %}
+<a href="/post/{{num}}">
+    <img src="{{static_url('images/{}.jpg'.format(num))}}" /> <!-- 使用此方法时，Tornado 会自动地给静态文件添加版本号，如果版本号更改了，浏览器会自动的缓存新的静态文件-->
+</a>
+{% end %}
+{% end %}

@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+
+{% block title %} explore page {% end %}
+
+{% block content %}
+<br>
+<label>query:</label>
+{% for url in image_urls %}
+<img src="{{url}}"/>
+{% end %}
+
+<br>
+<br>
+<br>
+
+<label>result:</label>
+{% for url in result_urls_p %}
+<img src="{{url}}"/>
+{% end %}
+
+{% end %}
+

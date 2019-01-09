@@ -53,7 +53,7 @@ args = Bunch(**{
     "height" : 128,
     "width" : 64,
     "load_weights" : "log/market1501-xent-htri/checkpoint_ep60.pth.tar",
-    "save_dir" : "log/",
+    "save_dir" : "static/",
     "seed" : 1,
     "source_names" : ["market1501"],
     "target_names" : ["market1501"],
