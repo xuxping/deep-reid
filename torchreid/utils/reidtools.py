@@ -90,9 +90,7 @@ def save_ranked_results(distmat, dataset, save_dir='log/ranked_results', topk=20
     print("# query: {}\n# gallery {}".format(num_q, num_g))
     print("Saving images to '{}'".format(save_dir))
     query, gallery = dataset['query'], dataset['gallery']
-    print(query)
 
-    print(num_q, len(query))
     assert num_q == len(query)
     assert num_g == len(gallery)
     
@@ -116,7 +114,6 @@ def save_ranked_results(distmat, dataset, save_dir='log/ranked_results', topk=20
             shutil.copy(src, dst)
 
     for q_idx in range(num_q):
-        print(query[q_idx])
         qimg_path = query[q_idx]
         qdir = osp.join(save_dir, osp.basename(qimg_path))
         mkdir_if_missing(qdir)
@@ -124,12 +121,11 @@ def save_ranked_results(distmat, dataset, save_dir='log/ranked_results', topk=20
 
         rank_idx = 1
         for g_idx in indices[q_idx,:]:
-            gimg_path, gpid, gcamid = gallery[g_idx]
+            # gimg_path, gpid, gcamid = gallery[g_idx]
+            gimg_path = gallery[g_idx]
             # invalid = (qpid == gpid) & (qcamid == gcamid)
             # if not invalid:
             _cp_img_to(gimg_path, qdir, rank=rank_idx, prefix='gallery')
             rank_idx += 1
             if rank_idx > topk:
                 break
-
-    print("Done")
