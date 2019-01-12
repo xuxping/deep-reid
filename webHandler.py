@@ -5,6 +5,8 @@ from utils import photo
 from detect import PersonDetect
 from infer import Classify
 
+detect = PersonDetect()
+
 class IndexHandler(tornado.web.RequestHandler):
     """
      Home page for user,photo feeds 主页----所关注的用户图片流
@@ -56,7 +58,7 @@ class UploadHandler(tornado.web.RequestHandler):  #上传文件
             # photo.make_thumb(save_to) #同时生成缩略图
 
             # 调用1）行人检测模型方法 参数： save_to 要查询的图片地址
-            detect = PersonDetect()
+
             imlist = [save_to]
             path = detect.detect(imlist)
             # 调用2）行人查询接口 返回结果图片到 result 下
