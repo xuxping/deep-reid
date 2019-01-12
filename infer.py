@@ -46,17 +46,16 @@ class Bunch(dict):
             raise AttributeError(key)
 
 # global variables
-# parser = argument_parser()
-# args = parser.parse_args()
 args = Bunch(**{
     "arch" : "resnet50",
+    "num_train_pids": 751,
+    "topk": 10,
     "height" : 128,
     "width" : 64,
     "load_weights" : "log/market1501-xent-htri/checkpoint_ep60.pth.tar",
     "save_dir" : "log/",
+    "gallery_path": './data/market1501/bounding_box_test',
     "seed" : 1,
-    "source_names" : ["market1501"],
-    "target_names" : ["market1501"],
     "test_batch_size" : 128,
     "train_batch_size" : 128,
     "root" : "data",
@@ -89,7 +88,6 @@ class MyImageDataset(Dataset):
 
 torch.manual_seed(args.seed)
 use_gpu = torch.cuda.is_available()
-print(use_gpu)
 if use_gpu:
     os.environ['CUDA_VISIBLE_DEVICES'] = '1'
     print("Currently using GPU {}".format(1))
@@ -97,16 +95,17 @@ if use_gpu:
     torch.cuda.manual_seed_all(args.seed)
 
 class Classify():
-    def __init__(self):
-        global args
+    def __init__(self, gallery_path=args.gallery_path, save_dir=args.save_dir):
         print("==========\nArgs:{}\n==========".format(args))
+        self.gallery_path = gallery_path
+        self.save_dir=save_dir
 
+        print("gallery_path".format(gallery_path))
         print("Initializing image data manager")
-        self.dm = ImageDataManager(use_gpu, **image_dataset_kwargs(args))
         # ------------
-        self.galleryloader = self.dm.return_galleryloader(args.target_names[0])
+        self.galleryloader, self.gallery_datasets = self.create_galleryloader()
         print("Initializing model: {}".format(args.arch))
-        self.model = models.init_model(name=args.arch, num_classes=self.dm.num_train_pids, loss={'xent', 'htri'})
+        self.model = models.init_model(name=args.arch, num_classes=args.num_train_pids, loss={'xent', 'htri'})
         print("Model size: {:.3f} M".format(count_num_param(self.model)))
 
         if args.load_weights and check_isfile(args.load_weights):
@@ -121,7 +120,7 @@ class Classify():
             print("Loaded pretrained weights from '{}'".format(args.load_weights))
         if use_gpu:
             self.model = nn.DataParallel(self.model).cuda()
-        self.gf, self.g_pids, self.g_camids = self.init_gallary_info()
+        self.gf = self.init_gallary_info()
 
     
     def init_gallary_info(self):
@@ -133,7 +132,7 @@ class Classify():
             pkl_path = './data/market1501/market1501.pkl'
             if not check_isfile(pkl_path):
                 end = time.time()
-                for batch_idx, (imgs, pids, camids, _) in enumerate(self.galleryloader):
+                for batch_idx, (imgs, _) in enumerate(self.galleryloader):
                     if use_gpu: 
                         imgs = imgs.cuda()
                     end = time.time()
@@ -142,25 +141,17 @@ class Classify():
 
                     features = features.data.cpu()
                     gf.append(features)
-                    g_pids.extend(pids)
-                    g_camids.extend(camids)
-                
+            
                 gf = torch.cat(gf, 0)
-                g_pids = np.asarray(g_pids)
-                g_camids = np.asarray(g_camids)
                 # cache for CPU
                 with open(pkl_path, mode='wb') as fout:
                     pickle.dump(gf, fout)
-                    pickle.dump(g_pids, fout)
-                    pickle.dump(g_camids, fout)
             else:
                 with open(pkl_path, mode='rb') as fin:
                     gf = pickle.load(fin)
-                    g_pids = pickle.load(fin)
-                    g_camids = pickle.load(fin)
 
         print("Extracted features for gallery set, obtained {}-by-{} matrix".format(gf.size(0), gf.size(1)))
-        return gf, g_pids, g_camids
+        return gf
     
     def create_quereyloader(self, img_paths):
         dataset = []
@@ -174,6 +165,21 @@ class Classify():
                 pin_memory=False, drop_last=False
         )
 
+    def create_galleryloader(self):
+        '''Create self-gallery datasets use gallery_path'''
+        dataset = []
+        img_paths = glob.glob(osp.join(self.gallery_path, '*.jpg'))
+        for img_path in img_paths:
+            dataset.append((img_path))
+        transform_test = build_transforms(args.height, args.width, is_train=False)
+
+        galleryloader = DataLoader(
+                MyImageDataset(dataset, transform=transform_test),
+                batch_size=args.test_batch_size, shuffle=False, num_workers=args.workers,
+                pin_memory=False, drop_last=False
+        )
+        return galleryloader, dataset
+
     def infer(self, img_paths=None):
         '''Infer 
 
@@ -185,18 +191,18 @@ class Classify():
 
         queryloader = self.create_quereyloader(img_paths)
         save_dirs = []
-        for name in args.target_names:
-            distmat = self.test(queryloader, return_distmat=True)
-            save_dir = osp.join(args.save_dir, 'ranked_results', name)
-            save_ranked_results(
-                distmat, {'query':img_paths,'gallery':self.dm.return_testdataset_gakkery(name)},
-                save_dir=save_dir,
-                topk=20
-            )
-            save_dirs.append(save_dir)
+        # for name in args.target_names:
+        distmat = self.test(queryloader, return_distmat=True)
+        save_dir = osp.join(self.save_dir, 'ranked_results')
+        save_ranked_results(
+            distmat, {'query':img_paths,'gallery':self.gallery_datasets},
+            save_dir=save_dir,
+            topk=args.topk
+        )
+        save_dirs.append(save_dir)
         return save_dirs
 
-    def test(self, queryloader, ranks=[1, 5, 10, 20], return_distmat=False):
+    def test(self, queryloader, return_distmat=False):
         batch_time = AverageMeter()
         
         self.model.eval()
@@ -223,8 +229,10 @@ class Classify():
         return distmat
         
 def main():
-    classify = Classify()
-    img_paths = ['./data/market1501/images/0026_c.jpg']
+    #classify = Classify(gallery_path='./data/video_data/video/')
+    # classify = Classify(gallery_path='./data/DukeMTMC-reID/bounding_box_test')
+    classify = Classify(gallery_path='./data/market1501/bounding_box_test')
+    img_paths = ['./data/market1501/query/1494_c5s3_062315_00.jpg']
     print(classify.infer(img_paths))
 
 
