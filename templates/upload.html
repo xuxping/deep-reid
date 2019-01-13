@@ -1,12 +1,68 @@
 {% extends 'base.html' %}
-
 {% block title %} uploads page{% end %}
+{% block content %}
+<div class="container">
+    <div class="panel panel-default">
+        <div class="panel-heading" style="text-align: center; font-weight: bold;">机器学习大作业</div>
+        <div class="panel-body">
 
-{% block content %} content page
-
-<!--如果表单需要上传文件，需要设置enctype="multipart/form-data" 否则文件无法找到 -->
-<form action="/upload" enctype="multipart/form-data" method="post">
-    <input type="file" name="newImg">
-    <input type="submit">
-</form>
+            <table class='table table-bordered'>
+                <tr>
+                    <td>
+                        项目名称
+                    </td>
+                    <td>
+                        行人重识别
+                    </td>
+                </tr>
+                 <tr>
+                    <td>
+                       组员
+                    </td>
+                    <td>
+                        许小平，钟世波
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        上传查找图片：
+                    </td>
+                    <td>
+                        <!--如果表单需要上传文件，需要设置enctype="multipart/form-data" 否则文件无法找到 -->
+                        <form action="/upload" enctype="multipart/form-data" method="post">
+                            <input type="file" id="newImg" name="newImg" style="width: 300px; float: left;">
+                            <input id="submitButton" type="submit" style="float: left;  width: 100px;">
+                        </form>
+                        <br>
+                        <div>
+                            {% for url in image_urls %}
+                            <img src="{{url}}"/>
+                            {% end %}
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        行人检测结果：<br/><code>(点击每张图片查看结果)</code>
+                    </td>
+                    <td>
+                        {% for url in dect_img_paths %}
+                        <img src="{{url}}" width="100px" height="200px" onclick="changeSearchImg(this)"/>
+                        {% end %}
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        行人重识别结果：
+                    </td>
+                    <td id="result">
+                        {% for url in result_urls_p %}
+                        <img src="{{url}}"/>
+                        {% end %}
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+</div>
 {% end %}
