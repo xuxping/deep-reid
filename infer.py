@@ -129,7 +129,8 @@ class Classify():
         self.model.eval()
         with torch.no_grad():
             gf, g_pids, g_camids = [], [], []
-            pkl_path = './data/market1501/market1501.pkl'
+            save_type = 'gpu' if use_gpu else 'cpu'
+            pkl_path = './data/market1501/market1501-%s.pkl' % save_type
             if not check_isfile(pkl_path):
                 end = time.time()
                 for batch_idx, (imgs, _) in enumerate(self.galleryloader):
@@ -230,9 +231,10 @@ class Classify():
         
 def main():
     #classify = Classify(gallery_path='./data/video_data/video/')
-    # classify = Classify(gallery_path='./data/DukeMTMC-reID/bounding_box_test')
     classify = Classify(gallery_path='./data/market1501/bounding_box_test')
-    img_paths = ['./data/market1501/query/1494_c5s3_062315_00.jpg']
+    import glob
+    img_paths = glob.glob(osp.join('./data/market1501/images', '*.jpg'))
+    #img_paths = ['./data/market1501/images/0026_c.jpg']
     print(classify.infer(img_paths))
 
 
