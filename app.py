@@ -3,7 +3,7 @@ import tornado.web      #web服务基本功能都封装在此模块中
 import tornado.options  #从命令行中读取设置
 from tornado.options import define,options  #导入包
 
-import main
+import webHandler
 
 
 define('port',default='8000',help='Listening port',type=int) #定义如何接受传进来的东西
@@ -12,10 +12,10 @@ define('port',default='8000',help='Listening port',type=int) #定义如何接受
 class Application(tornado.web.Application):  #引入Application类，重写方法，这样做的好处在于可以自定义，添加另一些功能
     def __init__(self):
         handlers = [
-            (r'/',main.IndexHandler),
-            (r'/explore',main.ExploreHandler),
-            (r'/post/(?P<post_id>[0-9]+)',main.PostHandler), #命名组写法,使用关键字，路由与handler方法不一定顺序一致
-            (r'/upload',main.UploadHandler)
+            (r'/', webHandler.IndexHandler),
+            (r'/explore', webHandler.ExploreHandler),
+            (r'/post/(?P<post_id>[0-9]+)', webHandler.PostHandler), #命名组写法,使用关键字，路由与handler方法不一定顺序一致
+            (r'/upload', webHandler.UploadHandler)
         ]
         settings = dict(
             debug = True, #调试模式，修改后自动重启服务，不需要自动重启，生产情况下切勿开启，安全性
