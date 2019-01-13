@@ -122,3 +122,5 @@ venv.bak/
 .mypy_cache/
 .vscode
 command.sh
+static/uploads
+static/ranked_results
