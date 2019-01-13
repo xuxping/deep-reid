@@ -17,7 +17,8 @@ class IndexHandler(tornado.web.RequestHandler):
     """
 
     def get(self, *args, **kwargs):
-        self.render('index.html')  # 打开index.html网页
+        self.redirect('/upload')
+        # self.render('index.html')  # 打开index.html网页
 
 
 class ExploreHandler(tornado.web.RequestHandler):
