@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+
+{% block title %} post page {% end %}
+
+{% block content %}
+post of {{post_id}} content
+
+<img src="{{static_url('images/{}.jpg'.format(post_id))}}" width="300"/>
+
+{% end %} #获取post_id并write到网页
