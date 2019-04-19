@@ -35,12 +35,12 @@ print(classify.infer(img_paths))
 ```
 
 ## 前端说明
-[使用流程](res/image1.png)
+![使用流程](res/image1.png)
 
 直接使用`python app.py`,然后进入`http://localhost:8000`,上传要检测的图片，即可返回图片中的行人以及行人重识别的结果   
-[结果示例](res/image2.png)
+![结果示例](res/image2.png)
 
-## 参考文献
+## 参考资料
 
 - Market-1501:http://www.liangzheng.org/Project/project_reid.html
 - Yolov3:https://github.com/ayooshkathuria/pytorch-yolo-v3
